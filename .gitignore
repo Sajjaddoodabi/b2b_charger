@@ -1,0 +1,86 @@
+# Compiled source #
+###################
+*.pyc
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Sphinx documentation #
+########################
+docs/_build/
+generated_docs/
+
+# Release generated files #
+###########################
+.eggs/
+build/
+dist/
+
+# vim
+*.swp
+
+# python testing things etc
+.coverage
+.tox
+env
+nosetests.xml
+
+googlemaps.egg-info
+*.egg
+
+.sqlite3
+*.sqlite3
+*.sqlite3_dev
+*.log
+*.zip
+*.out
+db/*
+
+
+media/
+node_modules/
+# iapp/settings.py
+iapp/local_settings.py
+local_settings.py
+.env
+.env/
+dump.rdb
+.idea/
+.vscode
+# *.txt
+*.json
+*.pid
+pip/
+pkg/
+
+# virtualenv
+.venv
+# panel
+!panel/build/
+!panel/**/*.json
+!panel/**/media
+!panel/**/*.zip
+!static/**
+
+# static files
+# templates/*
+!templates/*.html
+
+# yarn
+panel/.yarn/*
+!panel/.yarn/cache
+!panel/.yarn/releases
+!panel/.yarn/plugins
+!panel/.yarn/sdks
+!panel/.yarn/versions
+
+celerybeat-schedule*
+venv
+djangostatic

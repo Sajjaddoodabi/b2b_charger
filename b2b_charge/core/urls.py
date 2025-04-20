@@ -1,5 +1,5 @@
 """
-URL configuration for b2b_charge project.
+URL configuration for b2b_charger project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/4.2/topics/http/urls/
@@ -28,9 +28,9 @@ from core.settings import LOCAL_APPS
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="Snippets API",
+        title="B2b Charger API",
         default_version="v1",
-        description="Test description",
+        description="B2B Charger API Documentation",
         terms_of_service="https://www.google.com/policies/terms/",
         contact=openapi.Contact(email="contact@snippets.local"),
         license=openapi.License(name="BSD License"),
@@ -45,13 +45,10 @@ auth_urlpatterns = []
 local_apps_urlpatterns = [path(f"{app}/", include(f"{app}.urls")) for app in LOCAL_APPS]
 
 # API URLs
-api_urlpatterns = [
-    path("", include(local_apps_urlpatterns)),
-]
+api_urlpatterns = []
 
 # Main URL patterns
 urlpatterns = [
-    # Media access
     # Swagger and Redoc Documentation
     path("swagger.json", schema_view.without_ui(cache_timeout=0), name="schema-json"),
     path("swagger.yaml", schema_view.without_ui(cache_timeout=0), name="schema-yaml"),

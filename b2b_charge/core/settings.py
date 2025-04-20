@@ -56,7 +56,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "drf_yasg",
 ]
-LOCAL_APPS = []
+LOCAL_APPS = ["user"]
 INSTALLED_APPS = DEFAULT_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 
@@ -211,6 +211,8 @@ CACHES = {
         },
     }
 }
+
+AUTH_USER_MODEL = "user.User"
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",

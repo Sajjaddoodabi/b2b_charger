@@ -23,6 +23,7 @@ from django.urls import include, path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
+from rest_framework.authtoken.views import obtain_auth_token
 
 from core.settings import LOCAL_APPS
 
@@ -40,7 +41,9 @@ schema_view = get_schema_view(
 )
 
 # Authentication URLs
-auth_urlpatterns = []
+auth_urlpatterns = [
+    path("auth/", obtain_auth_token, name="obtain_auth_token"),
+]
 
 local_apps_urlpatterns = [path(f"{app}/", include(f"{app}.urls")) for app in LOCAL_APPS]
 

@@ -10,27 +10,38 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from environs import Env
+
+env = Env()
+env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+BASE_URL = env.str("BASE_URL")
+
+ENV = env.str("ENV")
+
+# Quick-start DEV settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-$mq=brx2ksmlvtjzlm%3^un80*=l5(3s-&k^4!u3cx^j#5bday"
+SECRET_KEY = env.str("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool("DEBUG")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 
-# Application definition
-
-INSTALLED_APPS = [
+DEFAULT_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -38,6 +49,16 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
+THIRD_PARTY_APPS = [
+    "rest_framework",
+    "rest_framework.authtoken",
+    "django_filters",
+    "corsheaders",
+    "drf_yasg",
+]
+LOCAL_APPS = []
+INSTALLED_APPS = DEFAULT_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -47,14 +68,61 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "core.middleware.RequestMiddleware",
+    "core.middleware.request_log.RequestLogMiddleware",
+    "core.middleware.rate_limit.RateLimitMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "file": {
+            "level": "WARNING",
+            "class": "logging.FileHandler",
+            "filename": "b2b_charger.log",
+        },
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"] if ENV == "DEV" else ["file"],
+            "level": "DEBUG" if ENV == "DEV" else "WARNING",
+            "propagate": True,
+        },
+    },
+}
+
+CORS_ALLOW_HEADERS = (
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "referer",
+    "host",
+    "connection",
+    "accept-language",
+    "content-disposition",
+)
+
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_ALL_ORIGINS = False
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [os.path.join(BASE_DIR, "templates/")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -67,7 +135,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "b2b_charge.wsgi.application"
+WSGI_APPLICATION = "core.wsgi.application"
 
 
 # Database
@@ -75,11 +143,15 @@ WSGI_APPLICATION = "b2b_charge.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": env.str("MYSQL_DATABASE"),
+        "USER": env.str("MYSQL_USER"),
+        "PASSWORD": env.str("MYSQL_PASSWORD"),
+        "HOST": env.str("DB_HOST"),
+        "PORT": env.str("DB_PORT"),
+        "OPTIONS": {"charset": "utf8mb4"},
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -105,19 +177,113 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
-
+TIME_ZONE = "Asia/Tehran"
 USE_I18N = True
-
+USE_L10N = False
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "djangostatic/"
+
+if ENV == "DEV":
+    STATICFILES_DIRS = [os.path.join(BASE_DIR, "djangostatic")]
+else:
+    STATIC_ROOT = "djangostatic/"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ALLOWED_HOSTS = env.list("MEDIA_ALLOWED_HOSTS")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env.str("REDIS_LOCATION"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ),
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.ResultsSetPagination",
+    "EXCEPTION_HANDLER": "core.exception_handler.custom_exception_handler",
+}
+if not DEBUG:
+    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
+        "rest_framework.renderers.JSONRenderer",
+    ]
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+
+if ENV == "DEV":
+    SECURE_BROWSER_XSS_FILTER = False
+else:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+# FOR CELERY
+CELERY_BROKER_URL = env.str("REDIS_LOCATION")
+CELERY_RESULT_BACKEND = env.str("REDIS_LOCATION")
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
+# RATE LIMIT
+UNSAFE_METHOD_RATE_LIMIT_NUMBER = 10
+UNSAFE_METHOD_RATE_LIMIT_DURATION = 60
+
+# UPLOAD FILE CONFIG
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100971520
+FILE_UPLOAD_MAX_MEMORY_SIZE = 100971520
+FILE_SUPPORTED_TYPES = {
+    "jpeg": ["image/jpeg"],
+    "jpg": ["image/jpeg"],
+    "tiff": ["image/tiff"],
+    "bmp": ["image/bmp"],
+    "png": ["image/png"],
+    "pdf": ["application/pdf"],
+    "ppt": ["application/vnd.ms-powerpoint"],
+    "pptx": [
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ],
+    "ppsx": ["application/vnd.openxmlformats-officedocument.presentationml.slideshow"],
+    "doc": ["application/msword"],
+    "docx": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    "xls": ["application/vnd.ms-excel"],
+    "xlsx": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+    "csv": ["text/csv"],
+    "mp4": ["audio/mp4", "video/mp4"],
+    "mpeg": ["audio/mpeg", "video/mpeg"],
+    "ogg": ["audio/ogg"],
+    "wave": ["audio/vnd.wave"],
+    "3gpp": ["audio/3gpp"],
+    "ac3": ["audio/ac3"],
+    "mp3": ["audio/mp3"],
+    "aac": ["audio/aac"],
+    "webm": ["audio/webm", "video/webm"],
+    "amr": ["audio/amr"],
+    "m4a": ["audio/m4a"],
+    "wav": ["audio/wav"],
+    "mov": ["video/quicktime"],
+    "zip": ["application/zip"],
+    "rar": ["application/vnd.rar"],
+}

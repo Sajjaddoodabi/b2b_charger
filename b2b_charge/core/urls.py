@@ -15,16 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import include, path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
-from core.settings import LOCAL_APPS
 
-from staff.views import CustomAuthToken
-from utils.media_access import media_access
+from core.settings import LOCAL_APPS
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -40,23 +40,18 @@ schema_view = get_schema_view(
 )
 
 # Authentication URLs
-auth_urlpatterns = [
-    path("token/", CustomAuthToken.as_view()),
-    path("", include("auth.urls")),
-]
+auth_urlpatterns = []
 
 local_apps_urlpatterns = [path(f"{app}/", include(f"{app}.urls")) for app in LOCAL_APPS]
 
 # API URLs
 api_urlpatterns = [
-    path("auth/", include(auth_urlpatterns)),
     path("", include(local_apps_urlpatterns)),
 ]
 
 # Main URL patterns
 urlpatterns = [
     # Media access
-    path("media/<path:path>/", media_access, name="media"),
     # Swagger and Redoc Documentation
     path("swagger.json", schema_view.without_ui(cache_timeout=0), name="schema-json"),
     path("swagger.yaml", schema_view.without_ui(cache_timeout=0), name="schema-yaml"),
@@ -73,3 +68,4 @@ urlpatterns = [
 ]
 
 urlpatterns += staticfiles_urlpatterns()
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

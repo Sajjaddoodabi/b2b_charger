@@ -18,3 +18,20 @@ class VendorSerializer(serializers.ModelSerializer):
         ).data
 
         return response
+
+
+class VendorInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vendor
+        exclude = ["balance"]
+
+    def to_representation(self, instance):
+        from user.serializers import UserInfoSerializer
+
+        response = super().to_representation(instance)
+
+        response["user"] = UserInfoSerializer(
+            instance.user, context={"request": self.context["request"]}
+        ).data
+
+        return response

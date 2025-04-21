@@ -6,7 +6,7 @@ from utils.models import BaseModel
 
 class Vendor(BaseModel):
     user = models.ForeignKey(
-        "staff.User",
+        "user.User",
         on_delete=models.CASCADE,
         related_name="vendors",
     )

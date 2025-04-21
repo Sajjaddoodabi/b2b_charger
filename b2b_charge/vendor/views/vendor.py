@@ -1,17 +1,16 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import filters
 
 from vendor.filters import VendorFilter
 from vendor.models import Vendor
-from user.permissions import IsAdmin, IsVendor, is_admin
+from user.permissions import IsVendorOrAdmin, is_admin
 from vendor.serializers import VendorSerializer
 from utils.views import BaseModelViewSet
 
 
 class VendorViewSet(BaseModelViewSet):
-    permission_classes = [IsVendor, IsAdmin]
+    permission_classes = [IsVendorOrAdmin]
     serializer_class = VendorSerializer
     filterset_class = VendorFilter
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
@@ -34,4 +33,3 @@ class VendorViewSet(BaseModelViewSet):
     )
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
-

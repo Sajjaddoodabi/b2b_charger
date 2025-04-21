@@ -1,4 +1,5 @@
 from rest_framework.permissions import BasePermission
+from vendor.models import Vendor
 
 
 class IsAdmin(BasePermission):
@@ -9,7 +10,15 @@ class IsAdmin(BasePermission):
 class IsSuperUser(BasePermission):
     def has_permission(self, request, view):
         return request.user and request.user.is_superuser
-    
+
+
+class IsVendor(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_vendor
+
+    def has_object_permission(self, request, view, obj):
+        return request.user and request.user.is_vendor and obj.user == request.user
+
 
 def is_admin(user):
     """

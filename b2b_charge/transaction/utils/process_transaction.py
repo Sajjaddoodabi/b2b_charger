@@ -6,7 +6,9 @@ def process_transaction(
     transaction_type,
     vendor,
     amount,
+    transfer_id,
     creator=None,
+    phone_number=None,
     description="",
 ):
     """
@@ -67,7 +69,9 @@ def process_transaction(
             creator=creator,
             transaction_type=transaction_type,
             amount=amount,
+            phone_number=phone_number,
             description=description,
+            transfer_id=transfer_id,
         )
 
     return error, transaction_status

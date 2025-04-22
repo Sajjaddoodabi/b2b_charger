@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg import openapi
@@ -101,6 +102,7 @@ class TransactionViewSet(BaseModelViewSet):
         try:
             vendor = Vendor.objects.select_for_update().get(id=vendor_id)
             amount = int(amount)
+            transfer_id = uuid.uuid4()
 
             error, proccess_status = process_transaction(
                 transaction_type,
@@ -108,6 +110,7 @@ class TransactionViewSet(BaseModelViewSet):
                 amount,
                 request.user,
                 description,
+                transfer_id,
             )
 
             if not proccess_status:

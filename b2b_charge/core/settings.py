@@ -56,7 +56,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "drf_yasg",
 ]
-LOCAL_APPS = ["user", "vendor", "transaction"]
+LOCAL_APPS = ["user", "vendor", "transaction", "phone_number"]
 INSTALLED_APPS = DEFAULT_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 

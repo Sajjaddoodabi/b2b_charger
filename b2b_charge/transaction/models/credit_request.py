@@ -7,6 +7,8 @@ from transaction.models import Transaction
 from utils.models import BaseModel
 from vendor.models import Vendor
 
+import uuid
+
 
 class CreditRequest(BaseModel):
     class Status(models.TextChoices):
@@ -68,6 +70,8 @@ class CreditRequest(BaseModel):
             # lock the current request row
             credit = CreditRequest.objects.select_for_update().get(pk=self.pk)
 
+            transfer_id = uuid.uuid4()
+
             if credit.status != self.Status.PENDING:
                 raise ValidationError("This request has already been processed.")
 
@@ -86,4 +90,5 @@ class CreditRequest(BaseModel):
                 vendor=credit.vendor,
                 amount=credit.amount,
                 description=f"Credit request approved by {approver.username} with amount {credit.amount}",
+                transfer_id=transfer_id,
             )

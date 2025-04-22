@@ -6,12 +6,10 @@ from vendor.serializers import VendorInfoSerializer
 
 
 class TransactionSerializer(serializers.ModelSerializer):
-    persian_created_at = serializers.ReadOnlyField()
-    persian_updated_at = serializers.ReadOnlyField()
-
     class Meta:
         model = Transaction
         fields = "__all__"
+        read_only_fields = ["created_at", "updated_at"]
 
     def to_representation(self, instance):
         response = super().to_representation(instance)
@@ -19,6 +17,6 @@ class TransactionSerializer(serializers.ModelSerializer):
             instance.vendor, context={"request": self.context.get("request")}
         ).data
         response["creator"] = UserInfoSerializer(
-            instance.user, context={"request": self.context.get("request")}
+            instance.creator, context={"request": self.context.get("request")}
         ).data
         return response

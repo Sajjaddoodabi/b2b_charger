@@ -21,6 +21,7 @@ from transaction.utils import process_transaction
 from user.permissions import IsVendorOrAdmin, is_admin
 from utils.views import BaseModelViewSet
 from vendor.models import Vendor
+from django.db import transaction as db_transaction
 
 logger = logging.getLogger(__name__)
 
@@ -99,46 +100,47 @@ class TransactionViewSet(BaseModelViewSet):
             )
             raise ParseError()
 
-        try:
-            vendor = Vendor.objects.select_for_update().get(id=vendor_id)
-            amount = int(amount)
-            transfer_id = uuid.uuid4()
+        with db_transaction.atomic():
+            try:
+                vendor = Vendor.objects.select_for_update().get(id=vendor_id)
+                amount = int(amount)
+                transfer_id = uuid.uuid4()
 
-            error, proccess_status = process_transaction(
-                transaction_type,
-                vendor,
-                amount,
-                request.user,
-                description,
-                transfer_id,
-            )
-
-            if not proccess_status:
-                logger.warning(error["log"])
-                return Response(
-                    {"message": error["message"]},
-                    status=http_status.HTTP_400_BAD_REQUEST,
+                error, proccess_status = process_transaction(
+                    transaction_type,
+                    vendor,
+                    amount,
+                    request.user,
+                    description,
+                    transfer_id,
                 )
 
-            logger.info(
-                f"TRANSACTION CREATE: Transaction successful. Vendor: {vendor.name}, Type: {transaction_type}, Amount: {amount}, Admin: {request.user.username}"
-            )
-            return Response(
-                {"message": f"{transaction_type} successful."},
-                status=http_status.HTTP_200_OK,
-            )
+                if not proccess_status:
+                    logger.warning(error["log"])
+                    return Response(
+                        {"message": error["message"]},
+                        status=http_status.HTTP_400_BAD_REQUEST,
+                    )
 
-        except Vendor.DoesNotExist:
-            logger.error(f"TRANSACTION CREATE: Vendor with ID {vendor_id} not found.")
-            raise NotFound("Vendor not found.")
-        except ValueError:
-            logger.error(f"TRANSACTION CREATE: Invalid amount value provided: {amount}")
-            raise ParseError("Amount must be a valid integer.")
-        except Exception as e:
-            logger.exception(
-                f"TRANSACTION CREATE: Unexpected error during transaction creation: {str(e)}"
-            )
-            raise ValidationError("An unexpected error occurred")
+                logger.info(
+                    f"TRANSACTION CREATE: Transaction successful. Vendor: {vendor.name}, Type: {transaction_type}, Amount: {amount}, Admin: {request.user.username}"
+                )
+                return Response(
+                    {"message": f"{transaction_type} successful."},
+                    status=http_status.HTTP_200_OK,
+                )
+
+            except Vendor.DoesNotExist:
+                logger.error(f"TRANSACTION CREATE: Vendor with ID {vendor_id} not found.")
+                raise NotFound("Vendor not found.")
+            except ValueError:
+                logger.error(f"TRANSACTION CREATE: Invalid amount value provided: {amount}")
+                raise ParseError("Amount must be a valid integer.")
+            except Exception as e:
+                logger.exception(
+                    f"TRANSACTION CREATE: Unexpected error during transaction creation: {str(e)}"
+                )
+                raise ValidationError("An unexpected error occurred")
 
     @swagger_auto_schema(
         operation_description="Update a transaction (not allowed).",

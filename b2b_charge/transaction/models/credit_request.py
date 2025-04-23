@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 from transaction.models import Transaction
 from utils.models import BaseModel
 from vendor.models import Vendor
-
+from transaction.utils import process_transaction
 import uuid
 
 
@@ -66,11 +66,21 @@ class CreditRequest(BaseModel):
         if self.status != self.Status.PENDING:
             raise ValidationError("Only pending requests can be approved.")
 
-        with db_transaction.atomic():
-            # lock the current request row
-            credit = CreditRequest.objects.select_for_update().get(pk=self.pk)
+        transfer_id = uuid.uuid4()
 
-            transfer_id = uuid.uuid4()
+        error, procesess_status = process_transaction(
+            transaction_type=Transaction.TransactionType.DEPOSIT,
+            vendor=self.vendor,
+            amount=self.amount,
+            creator=approver,
+            description=f"Credit request approved by {approver.username} with amount {self.amount}",
+            transfer_id=transfer_id,
+        )
+        if not procesess_status:
+            raise ValidationError(f"Transaction failed: {error}")
+
+        with db_transaction.atomic():
+            credit = CreditRequest.objects.select_for_update().get(pk=self.pk)
 
             if credit.status != self.Status.PENDING:
                 raise ValidationError("This request has already been processed.")
@@ -79,16 +89,3 @@ class CreditRequest(BaseModel):
             credit.approved_by = approver
             credit.responded_at = now()
             credit.save()
-
-            # update balance (safe against race conditions)
-            vendor = Vendor.objects.select_for_update().get(pk=credit.vendor.pk)
-            vendor.balance += credit.amount
-            vendor.save(update_fields=["balance"])
-
-            Transaction.objects.create(
-                transaction_type=Transaction.TransactionType.DEPOSIT,
-                vendor=credit.vendor,
-                amount=credit.amount,
-                description=f"Credit request approved by {approver.username} with amount {credit.amount}",
-                transfer_id=transfer_id,
-            )

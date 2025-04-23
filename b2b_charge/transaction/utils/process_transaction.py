@@ -1,77 +1,70 @@
 from django.db import transaction as db_transaction
+from django.db.utils import OperationalError
+import time
 from transaction.models import Transaction
+from vendor.models import Vendor
 
 
 def process_transaction(
     transaction_type,
     vendor,
     amount,
-    transfer_id,
     creator=None,
-    phone_number=None,
     description="",
+    phone_number=None,
+    transfer_id=None,
+    retries=3,
+    retry_wait=0.2,
 ):
     """
-    Process a transaction for a vendor. Handles deposits, withdrawals, and notifications.
-
-    Args:
-        transaction_type (str): Type of transaction (e.g., Transaction.DEPOSIT or Transaction.WITHDRAW).
-        vendor (Vendor): The vendor associated with the transaction.
-        amount (float): The amount for the transaction.
-        creator (User, optional): The creator of the transaction (admin or system).
-        description (str, optional): A description of the transaction.
-
-    Returns:
-        tuple: A dictionary with error details (if any) and a boolean indicating transaction success.
+    Process a transaction with automatic retry if lock timeout occurs.
     """
-
     error = {"log": "", "message": ""}
-    transaction_status = False
 
     if amount <= 0:
-        error["log"] = f"TRANSACTION ERROR: Invalid amount ({amount}) for transaction."
+        error["log"] = f"❌ Invalid amount: {amount}"
         error["message"] = "Amount must be greater than zero."
-        return error, transaction_status
+        return error, False
 
-    with db_transaction.atomic():
-        # Handle deposit transactions
-        if transaction_type == Transaction.TransactionType.DEPOSIT:
-            vendor.balance += amount
-            transaction_status = True
-
-        # Handle withdrawal transactions
-        elif transaction_type == Transaction.TransactionType.WITHDRAW:
-            if vendor.balance < amount:
-                error["log"] = (
-                    f"TRANSACTION ERROR: Insufficient points for withdrawal. "
-                    f"Vencor: {vendor.name}, Balance: {vendor.balance}, Attempted: {amount}"
+    for attempt in range(retries):
+        try:
+            with db_transaction.atomic():
+                locked_vendor = Vendor.objects.select_for_update(skip_locked=True).get(
+                    pk=vendor.pk
                 )
-                error["message"] = "Insufficient points."
-                return error, transaction_status
 
-            vendor.balance -= amount
-            transaction_status = True
+                if transaction_type == Transaction.TransactionType.DEPOSIT:
+                    locked_vendor.balance += amount
 
-        # Handle invalid transaction types
-        else:
-            error["log"] = (
-                f"TRANSACTION ERROR: Invalid transaction type: {transaction_type}"
-            )
-            error["message"] = "Invalid transaction type."
-            return error, transaction_status
+                elif transaction_type == Transaction.TransactionType.WITHDRAW:
+                    if locked_vendor.balance < amount:
+                        error["log"] = (
+                            f"❌ Insufficient balance on vendor {locked_vendor.name}"
+                        )
+                        error["message"] = "Insufficient balance."
+                        return error, False
+                    locked_vendor.balance -= amount
 
-        # Save updated balance for the vendor
-        vendor.save(update_fields=["balance"])
+                else:
+                    error["log"] = f"❌ Invalid transaction type: {transaction_type}"
+                    error["message"] = "Invalid transaction type."
+                    return error, False
 
-        # Record the transaction
-        Transaction.objects.create(
-            vendor=vendor,
-            creator=creator,
-            transaction_type=transaction_type,
-            amount=amount,
-            phone_number=phone_number,
-            description=description,
-            transfer_id=transfer_id,
-        )
+                locked_vendor.save(update_fields=["balance"])
 
-    return error, transaction_status
+                Transaction.objects.create(
+                    vendor=locked_vendor,
+                    creator=creator,
+                    transaction_type=transaction_type,
+                    amount=amount,
+                    description=description,
+                    phone_number=phone_number,
+                    transfer_id=transfer_id,
+                )
+            return error, True
+
+        except OperationalError as e:
+            if "Lock wait timeout" in str(e) and attempt < retries - 1:
+                continue
+            else:
+                raise

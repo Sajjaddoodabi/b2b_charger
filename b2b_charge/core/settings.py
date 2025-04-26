@@ -225,7 +225,6 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.BasicAuthentication",
     ),
     "DEFAULT_PAGINATION_CLASS": "core.pagination.ResultsSetPagination",
-    "EXCEPTION_HANDLER": "core.exception_handler.custom_exception_handler",
 }
 if not DEBUG:
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [

@@ -9,6 +9,8 @@ class Vendor(BaseModel):
         "user.User",
         on_delete=models.CASCADE,
         related_name="vendors",
+        blank=True,
+        null=True,
     )
     name = models.CharField(max_length=255, unique=True)
     address = models.TextField(null=True, blank=True)

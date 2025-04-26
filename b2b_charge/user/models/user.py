@@ -14,7 +14,8 @@ class User(AbstractUser):
     full_name = models.CharField(max_length=255, blank=True, null=True)
     phone_number = models.CharField(max_length=255, blank=True, null=True)
     avatar = models.ImageField(blank=True, null=True, upload_to="avatars/")
-
+    is_vendor = models.BooleanField(default=False)
+ 
 
     def __str__(self) -> str:
         return self.username

@@ -48,7 +48,10 @@ auth_urlpatterns = [
 local_apps_urlpatterns = [path(f"{app}/", include(f"{app}.urls")) for app in LOCAL_APPS]
 
 # API URLs
-api_urlpatterns = []
+api_urlpatterns = [
+    path("", include(local_apps_urlpatterns)),
+    path("", include(auth_urlpatterns)),
+]
 
 # Main URL patterns
 urlpatterns = [

@@ -106,24 +106,23 @@ class UserViewSet(BaseModelViewSet):
         serializer = UserRegistrationSerializer(data=request.data)
 
         if serializer.is_valid():
-            try:
-                user = serializer.save(
-                    password=make_password(serializer.validated_data["password"]),
-                    is_ldap_user=False,
-                )
-                logger.info(
-                    f"USER REGISTER: New user registered: {user.username} (ID: {user.id})"
-                )
-                return Response(
-                    UserSerializer(user).data,
-                    status=status.HTTP_201_CREATED,
-                )
-            except Exception as e:
-                logger.error(f"USER REGISTER: Error during registration: {str(e)}")
-                return Response(
-                    {"error": "Internal server error."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            # try:
+            user = serializer.save(
+                password=make_password(serializer.validated_data["password"])
+            )
+            logger.info(
+                f"USER REGISTER: New user registered: {user.username} (ID: {user.id})"
+            )
+            return Response(
+                UserSerializer(user).data,
+                status=status.HTTP_201_CREATED,
+            )
+            # except Exception as e:
+            #     logger.error(f"USER REGISTER: Error during registration: {str(e)}")
+            #     return Response(
+            #         {"error": "Internal server error."},
+            #         status=status.HTTP_400_BAD_REQUEST,
+            #     )
 
         logger.warning(
             f"USER REGISTER: Invalid registration attempt: {serializer.errors}"

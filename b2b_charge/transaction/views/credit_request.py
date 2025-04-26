@@ -7,7 +7,7 @@ from rest_framework import filters
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.decorators import action
-
+from rest_framework import status as http_status
 from transaction.models import CreditRequest
 from transaction.filters import CreditRequestFilter
 from transaction.serializers import CreditRequestSerializer
@@ -30,7 +30,7 @@ class CreditRequestViewSet(BaseModelViewSet):
     ]
 
     def get_queryset(self):
-        queryset = CreditRequest.objects.select_related("vendor", "creator").order_by(
+        queryset = CreditRequest.objects.select_related("vendor", "approved_by").order_by(
             "-id"
         )
         for_manage = self.request.GET.get("for_manage", "false") == "true"
@@ -96,7 +96,7 @@ class CreditRequestViewSet(BaseModelViewSet):
         if not new_status:
             return Response(
                 {"error": "Status field is required."},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=http_status.HTTP_400_BAD_REQUEST,
             )
 
         if new_status not in [
@@ -108,7 +108,7 @@ class CreditRequestViewSet(BaseModelViewSet):
                 {
                     "error": "Invalid status. Must be 'Accepted', 'Rejected', or 'Cancelled'."
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=http_status.HTTP_400_BAD_REQUEST,
             )
 
         if new_status in [
@@ -117,23 +117,13 @@ class CreditRequestViewSet(BaseModelViewSet):
         ] and not is_admin(request.user):
             return Response(
                 {"error": "Only admins can accept or reject credit requests."},
-                status=status.HTTP_403_FORBIDDEN,
+                status=http_status.HTTP_403_FORBIDDEN,
             )
-
-        user_vendor = Vendor.objects.filter(user=request.user).first()
-        if not user_vendor:
-            raise ValidationError("User is not associated with any vendor.")
-
-        if (
-            new_status == CreditRequest.Status.CANCELLED
-            and instance.vendor != user_vendor
-        ):
-            raise ValidationError("You can only cancel your own requests.")
 
         try:
             if new_status == CreditRequest.Status.ACCEPTED:
                 instance.approve(request.user)
-                return Response({"status": "approved"}, status=status.HTTP_200_OK)
+                return Response({"status": "approved"}, status=http_status.HTTP_200_OK)
 
             elif new_status == CreditRequest.Status.REJECTED:
                 if instance.status != CreditRequest.Status.PENDING:
@@ -143,7 +133,7 @@ class CreditRequestViewSet(BaseModelViewSet):
                 instance.approved_by = request.user
                 instance.responded_at = now()
                 instance.save()
-                return Response({"status": "rejected"}, status=status.HTTP_200_OK)
+                return Response({"status": "rejected"}, status=http_status.HTTP_200_OK)
 
             elif new_status == CreditRequest.Status.CANCELLED:
                 if instance.status != CreditRequest.Status.PENDING:
@@ -152,7 +142,7 @@ class CreditRequestViewSet(BaseModelViewSet):
                 instance.status = CreditRequest.Status.CANCELLED
                 instance.responded_at = now()
                 instance.save()
-                return Response({"status": "cancelled"}, status=status.HTTP_200_OK)
+                return Response({"status": "cancelled"}, status=http_status.HTTP_200_OK)
 
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
